@@ -9,21 +9,47 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 // Backend server configuration
 const BACKEND_PORT = process.env.PORT || 5000;
-// In production, backend is bundled in the app.asar (protected) with native modules unpacked
-const BACKEND_PATH = isDev 
-  ? path.join(__dirname, '..', 'backend', 'server.js')
-  : (app.isPackaged 
-      ? path.join(app.getAppPath(), 'backend', 'server.js')
-      : path.join(__dirname, '..', 'backend', 'server.js'));
+// Backend path will be calculated when needed
+function getBackendPath() {
+  if (isDev) {
+    return path.join(__dirname, '..', 'backend', 'server.js');
+  } else if (app.isPackaged) {
+    return path.join(app.getAppPath(), 'backend', 'server.js');
+  } else {
+    return path.join(__dirname, '..', 'backend', 'server.js');
+  }
+}
 
-// Frontend build path
-const FRONTEND_PATH = isDev
-  ? 'http://localhost:3000'
-  : (app.isPackaged
-      ? `file://${path.join(__dirname, '..', 'frontend', 'build', 'index.html')}`
-      : `file://${path.join(__dirname, '..', 'frontend', 'build', 'index.html')}`);
+// Frontend build path - will be set correctly when app is ready
+let FRONTEND_PATH = '';
 
 function createWindow() {
+  // Determine paths based on environment
+  let preloadPath, frontendPath;
+  
+  if (isDev) {
+    preloadPath = path.join(__dirname, 'preload.js');
+    frontendPath = 'http://localhost:3000';
+  } else if (app.isPackaged) {
+    // In production, files are in app.asar
+    const appPath = app.getAppPath(); // Returns path to app.asar
+    preloadPath = path.join(appPath, 'electron', 'preload.js');
+    frontendPath = path.join(appPath, 'frontend', 'build', 'index.html'); // Use file path, not file:// URL
+  } else {
+    preloadPath = path.join(__dirname, 'preload.js');
+    frontendPath = path.join(__dirname, '..', 'frontend', 'build', 'index.html'); // Use file path, not file:// URL
+  }
+  
+  // Update global FRONTEND_PATH
+  FRONTEND_PATH = frontendPath;
+  
+  console.log('[Window] Creating window...');
+  console.log('[Window] isDev:', isDev);
+  console.log('[Window] isPackaged:', app.isPackaged);
+  console.log('[Window] App path:', app.getAppPath());
+  console.log('[Window] Frontend path:', frontendPath);
+  console.log('[Window] Preload path:', preloadPath);
+  
   // Create the browser window
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -33,19 +59,22 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
+      preload: preloadPath,
       webSecurity: true,
     },
-    icon: path.join(__dirname, 'assets', 'icon.png'), // Optional: add icon
     show: false, // Don't show until ready
   });
+  
+  // Enable DevTools for debugging (can be removed in production)
+  // Uncomment the next line to always show DevTools
+  // mainWindow.webContents.openDevTools();
 
   // Load the app with retry logic for development
   const loadApp = () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     
     if (isDev) {
-      // In dev mode, retry loading if connection fails
+      // In dev mode, use loadURL for HTTP
       mainWindow.loadURL(FRONTEND_PATH).catch((error) => {
         console.log('Failed to load frontend, retrying in 2 seconds...', error);
         setTimeout(() => {
@@ -55,7 +84,34 @@ function createWindow() {
       // Open DevTools in development
       mainWindow.webContents.openDevTools();
     } else {
-      mainWindow.loadURL(FRONTEND_PATH);
+      // In production, use loadFile for file paths (handles relative paths correctly)
+      console.log('[Window] Loading frontend file:', FRONTEND_PATH);
+      
+      // Check if file exists
+      if (fs.existsSync(frontendPath)) {
+        console.log('[Window] Frontend file exists, loading...');
+      } else {
+        console.error('[Window] Frontend file does NOT exist at:', frontendPath);
+        // Try to list directory contents
+        const dir = path.dirname(frontendPath);
+        if (fs.existsSync(dir)) {
+          console.log('[Window] Directory exists, contents:', fs.readdirSync(dir));
+        } else {
+          console.error('[Window] Directory does NOT exist:', dir);
+        }
+      }
+      
+      // Always open DevTools in production for debugging (remove later)
+      mainWindow.webContents.openDevTools();
+      
+      mainWindow.loadFile(FRONTEND_PATH).catch((error) => {
+        console.error('[Window] Failed to load frontend:', error);
+        // Show window anyway so user can see error
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      });
     }
   };
 
@@ -69,8 +125,28 @@ function createWindow() {
         }
       }, 2000);
     } else if (!isDev) {
-      console.error('Failed to load page:', errorCode, errorDescription, validatedURL);
+      console.error('[Window] Failed to load page:', errorCode, errorDescription, validatedURL);
+      // Show window even if page fails to load
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+        // Open DevTools to see the error
+        mainWindow.webContents.openDevTools();
+      }
     }
+  });
+  
+  // Add event listeners for debugging
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('[Window] Page finished loading');
+  });
+  
+  mainWindow.webContents.on('dom-ready', () => {
+    console.log('[Window] DOM is ready');
+  });
+  
+  mainWindow.webContents.on('did-start-loading', () => {
+    console.log('[Window] Started loading page');
   });
   
   // Initial load
@@ -78,15 +154,34 @@ function createWindow() {
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
+    console.log('[Window] ready-to-show event fired');
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.show();
-      
-      // Focus on window
-      if (isDev) {
-        mainWindow.focus();
+      mainWindow.focus();
+      // Ensure DevTools are open for debugging
+      if (!isDev) {
+        mainWindow.webContents.openDevTools();
       }
     }
   });
+  
+  // Fallback: show window after delay if ready-to-show doesn't fire
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (!mainWindow.isVisible()) {
+        console.log('[Window] Forcing window to show (fallback)');
+        mainWindow.show();
+        mainWindow.focus();
+      }
+      // Always open DevTools for debugging in production
+      if (!isDev) {
+        mainWindow.webContents.openDevTools();
+      }
+      // Log current URL
+      const currentURL = mainWindow.webContents.getURL();
+      console.log('[Window] Current URL:', currentURL);
+    }
+  }, 2000);
 
   // Handle window closed
   mainWindow.on('closed', () => {
@@ -133,6 +228,9 @@ function startBackendServer() {
       
       // Determine Node.js executable
       const nodeExecutable = process.execPath;
+      
+      // Get backend path
+      const BACKEND_PATH = getBackendPath();
       
       // Start backend server
       const backendCwd = isDev 
@@ -231,12 +329,26 @@ function stopBackendServer() {
 
 // App event handlers
 app.whenReady().then(async () => {
+  console.log('[App] App is ready, starting...');
+  
+  // Create window first so user can see something
+  createWindow();
+  
   try {
-    // Start backend server first
-    await startBackendServer();
+    // Start backend server (don't block window creation)
+    console.log('[App] Starting backend server...');
+    const backendPromise = startBackendServer();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Backend startup timeout')), 10000)
+    );
     
-    // Create window
-    createWindow();
+    try {
+      await Promise.race([backendPromise, timeoutPromise]);
+      console.log('[App] Backend server started successfully');
+    } catch (error) {
+      console.error('[App] Backend startup error (continuing anyway):', error);
+      // Continue even if backend fails - window should still show
+    }
     
     // Set application menu (optional - customize as needed)
     if (process.platform === 'darwin') {
@@ -293,8 +405,9 @@ app.whenReady().then(async () => {
       Menu.setApplicationMenu(null); // Use default menu on Windows/Linux
     }
   } catch (error) {
-    console.error('Failed to start application:', error);
-    app.quit();
+    console.error('[App] Failed to start application:', error);
+    // Don't quit - window should already be created
+    // Just log the error
   }
 });
 
