@@ -1,7 +1,51 @@
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, dialog } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
+
+// Create log file for debugging
+let logFile = '';
+function getLogFile() {
+  if (!logFile) {
+    try {
+      logFile = path.join(app.getPath('userData'), 'app.log');
+    } catch (error) {
+      // If app not ready, use temp location
+      logFile = path.join(require('os').tmpdir(), 'ems-app.log');
+    }
+  }
+  return logFile;
+}
+
+function logToFile(message) {
+  const timestamp = new Date().toISOString();
+  const logMessage = `[${timestamp}] ${message}\n`;
+  try {
+    const logPath = getLogFile();
+    fs.appendFileSync(logPath, logMessage);
+  } catch (error) {
+    // If we can't write to file, at least try console
+    console.error('Failed to write to log file:', error);
+  }
+  // Also log to console
+  console.log(message);
+}
+
+// Prevent multiple instances - MUST be called before app.whenReady()
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  app.quit();
+  process.exit(0);
+}
+
+// Log startup
+logToFile('========================================');
+logToFile('App starting...');
+logToFile('isDev: ' + (process.env.NODE_ENV === 'development' || !app.isPackaged));
+logToFile('isPackaged: ' + app.isPackaged);
+logToFile('Log file: ' + getLogFile());
+logToFile('========================================');
 
 let mainWindow;
 let backendProcess;
@@ -10,11 +54,18 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 // Backend server configuration
 const BACKEND_PORT = process.env.PORT || 5000;
 // Backend path will be calculated when needed
-function getBackendPath() {
+function getBackendExecutablePath() {
   if (isDev) {
+    // In dev, use server.js
     return path.join(__dirname, '..', 'backend', 'server.js');
   } else if (app.isPackaged) {
-    return path.join(app.getAppPath(), 'backend', 'server.js');
+    // In production, use backend.exe from extraResources
+    const backendExe = path.join(process.resourcesPath, 'backend', 'backend.exe');
+    if (fs.existsSync(backendExe)) {
+      return backendExe;
+    }
+    // Fallback to server.js if exe doesn't exist
+    return path.join(process.resourcesPath, 'backend', 'server.js');
   } else {
     return path.join(__dirname, '..', 'backend', 'server.js');
   }
@@ -24,6 +75,13 @@ function getBackendPath() {
 let FRONTEND_PATH = '';
 
 function createWindow() {
+  // Prevent multiple windows
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    logToFile('[Window] Window already exists, focusing...');
+    mainWindow.focus();
+    return;
+  }
+  
   // Determine paths based on environment
   let preloadPath, frontendPath;
   
@@ -31,10 +89,9 @@ function createWindow() {
     preloadPath = path.join(__dirname, 'preload.js');
     frontendPath = 'http://localhost:3000';
   } else if (app.isPackaged) {
-    // In production, files are in app.asar
-    const appPath = app.getAppPath(); // Returns path to app.asar
-    preloadPath = path.join(appPath, 'electron', 'preload.js');
-    frontendPath = path.join(appPath, 'frontend', 'build', 'index.html'); // Use file path, not file:// URL
+    // In production, use simple path - Electron handles ASAR automatically
+    preloadPath = path.join(__dirname, 'preload.js');
+    frontendPath = path.join(__dirname, '..', 'frontend', 'build', 'index.html');
   } else {
     preloadPath = path.join(__dirname, 'preload.js');
     frontendPath = path.join(__dirname, '..', 'frontend', 'build', 'index.html'); // Use file path, not file:// URL
@@ -43,12 +100,12 @@ function createWindow() {
   // Update global FRONTEND_PATH
   FRONTEND_PATH = frontendPath;
   
-  console.log('[Window] Creating window...');
-  console.log('[Window] isDev:', isDev);
-  console.log('[Window] isPackaged:', app.isPackaged);
-  console.log('[Window] App path:', app.getAppPath());
-  console.log('[Window] Frontend path:', frontendPath);
-  console.log('[Window] Preload path:', preloadPath);
+  logToFile('[Window] Creating window...');
+  logToFile('[Window] isDev: ' + isDev);
+  logToFile('[Window] isPackaged: ' + app.isPackaged);
+  logToFile('[Window] App path: ' + app.getAppPath());
+  logToFile('[Window] Frontend path: ' + frontendPath);
+  logToFile('[Window] Preload path: ' + preloadPath);
   
   // Create the browser window
   mainWindow = new BrowserWindow({
@@ -56,101 +113,79 @@ function createWindow() {
     height: 900,
     minWidth: 1200,
     minHeight: 700,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
+      webPreferences: {
       preload: preloadPath,
-      webSecurity: true,
+      devTools: true,
+      contextIsolation: true,
+      nodeIntegration: false,
     },
-    show: false, // Don't show until ready
+    show: true, // Show immediately for debugging
   });
   
-  // Enable DevTools for debugging (can be removed in production)
-  // Uncomment the next line to always show DevTools
-  // mainWindow.webContents.openDevTools();
+  // Show window immediately for debugging
+  mainWindow.show();
+  
+  // Always open DevTools for debugging
+  mainWindow.webContents.openDevTools();
 
-  // Load the app with retry logic for development
-  const loadApp = () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    
-    if (isDev) {
-      // In dev mode, use loadURL for HTTP
-      mainWindow.loadURL(FRONTEND_PATH).catch((error) => {
-        console.log('Failed to load frontend, retrying in 2 seconds...', error);
-        setTimeout(() => {
-          loadApp();
-        }, 2000);
-      });
-      // Open DevTools in development
-      mainWindow.webContents.openDevTools();
+  // Load the app - simple like working example
+  if (isDev) {
+    // In dev mode, use loadURL for HTTP
+    if (process.env.ELECTRON_START_URL) {
+      mainWindow.loadURL(process.env.ELECTRON_START_URL);
     } else {
-      // In production, use loadFile for file paths (handles relative paths correctly)
-      console.log('[Window] Loading frontend file:', FRONTEND_PATH);
-      
-      // Check if file exists
-      if (fs.existsSync(frontendPath)) {
-        console.log('[Window] Frontend file exists, loading...');
-      } else {
-        console.error('[Window] Frontend file does NOT exist at:', frontendPath);
-        // Try to list directory contents
-        const dir = path.dirname(frontendPath);
-        if (fs.existsSync(dir)) {
-          console.log('[Window] Directory exists, contents:', fs.readdirSync(dir));
-        } else {
-          console.error('[Window] Directory does NOT exist:', dir);
-        }
-      }
-      
-      // Always open DevTools in production for debugging (remove later)
-      mainWindow.webContents.openDevTools();
-      
-      mainWindow.loadFile(FRONTEND_PATH).catch((error) => {
-        console.error('[Window] Failed to load frontend:', error);
-        // Show window anyway so user can see error
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.show();
-          mainWindow.focus();
-        }
-      });
+      mainWindow.loadURL(FRONTEND_PATH);
     }
-  };
-
-  // Handle failed page loads (set up before loading)
+  } else {
+    // In production, use loadFile - simple direct call like working example
+    mainWindow.loadFile(FRONTEND_PATH);
+  }
+  
+  // Handle failed page loads (set up after loading)
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     if (isDev && validatedURL && validatedURL.includes('localhost:3000')) {
-      console.log(`Failed to load ${validatedURL} (${errorCode}: ${errorDescription}), retrying in 2 seconds...`);
+      logToFile(`Failed to load ${validatedURL} (${errorCode}: ${errorDescription}), retrying in 2 seconds...`);
       setTimeout(() => {
         if (mainWindow && !mainWindow.isDestroyed()) {
-          loadApp();
+          mainWindow.loadURL(FRONTEND_PATH);
+        }
+      }, 2000);
+    } else if (!isDev && validatedURL && validatedURL.includes('static/')) {
+      logToFile(`[Window] ✗ Failed to load resource: ${errorCode} - ${validatedURL}`);
+    }
+  });
+
+  // Handle failed page loads
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    if (isDev && validatedURL && validatedURL.includes('localhost:3000')) {
+      logToFile(`Failed to load ${validatedURL} (${errorCode}: ${errorDescription}), retrying in 2 seconds...`);
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.loadURL(FRONTEND_PATH);
         }
       }, 2000);
     } else if (!isDev) {
-      console.error('[Window] Failed to load page:', errorCode, errorDescription, validatedURL);
-      // Show window even if page fails to load
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.show();
-        mainWindow.focus();
-        // Open DevTools to see the error
-        mainWindow.webContents.openDevTools();
+      if (isMainFrame) {
+        logToFile('[Window] Failed to load page: ' + errorCode + ' - ' + errorDescription + ' - ' + validatedURL);
+      } else if (validatedURL && validatedURL.includes('static/')) {
+        logToFile(`[Window] ✗ Failed to load resource: ${errorCode} - ${validatedURL}`);
       }
     }
   });
   
-  // Add event listeners for debugging
+  // Log when page is fully loaded and check if React rendered
   mainWindow.webContents.on('did-finish-load', () => {
-    console.log('[Window] Page finished loading');
+    logToFile('[Window] Page finished loading');
   });
   
+  // Add event listeners for debugging (duplicate removed - already handled above)
   mainWindow.webContents.on('dom-ready', () => {
-    console.log('[Window] DOM is ready');
+    logToFile('[Window] DOM is ready');
   });
   
   mainWindow.webContents.on('did-start-loading', () => {
-    console.log('[Window] Started loading page');
+    logToFile('[Window] Started loading page');
   });
-  
-  // Initial load
-  loadApp();
 
   // Show window when ready
   mainWindow.once('ready-to-show', () => {
@@ -173,13 +208,19 @@ function createWindow() {
         mainWindow.show();
         mainWindow.focus();
       }
-      // Always open DevTools for debugging in production
-      if (!isDev) {
-        mainWindow.webContents.openDevTools();
-      }
       // Log current URL
       const currentURL = mainWindow.webContents.getURL();
       console.log('[Window] Current URL:', currentURL);
+      
+      // Show debug info in window if page is blank
+      mainWindow.webContents.executeJavaScript(`
+        if (document.body && document.body.innerHTML.trim() === '') {
+          const debugDiv = document.createElement('div');
+          debugDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; background: #1e1e1e; color: #d4d4d4; padding: 10px; font-family: monospace; font-size: 12px; z-index: 9999;';
+          debugDiv.innerHTML = '<strong>Debug Info:</strong><br>URL: ' + window.location.href + '<br>Ready: ' + document.readyState;
+          document.body.appendChild(debugDiv);
+        }
+      `);
     }
   }, 2000);
 
@@ -224,20 +265,39 @@ function startBackendServer() {
     }
 
     function startBackendProcess() {
-      console.log('Starting backend server...');
+      logToFile('[Backend] Starting backend server...');
       
-      // Determine Node.js executable
-      const nodeExecutable = process.execPath;
+      // Get backend executable path
+      const BACKEND_EXE_PATH = getBackendExecutablePath();
+      logToFile('[Backend] Backend executable path: ' + BACKEND_EXE_PATH);
       
-      // Get backend path
-      const BACKEND_PATH = getBackendPath();
+      // Verify executable exists
+      if (!fs.existsSync(BACKEND_EXE_PATH)) {
+        logToFile('[Backend] ✗ Backend executable does NOT exist: ' + BACKEND_EXE_PATH);
+        reject(new Error('Backend executable not found: ' + BACKEND_EXE_PATH));
+        return;
+      }
+      logToFile('[Backend] ✓ Backend executable exists');
       
-      // Start backend server
-      const backendCwd = isDev 
-        ? path.join(__dirname, '..', 'backend')
-        : (app.isPackaged 
-            ? app.getAppPath()
-            : path.dirname(BACKEND_PATH));
+      // Determine how to run backend
+      let nodeExecutable, backendArgs, backendCwd;
+      
+      if (isDev || BACKEND_EXE_PATH.endsWith('.js')) {
+        // Running as Node.js script (dev mode)
+        nodeExecutable = process.execPath;
+        backendArgs = [BACKEND_EXE_PATH];
+        backendCwd = path.join(__dirname, '..', 'backend');
+        logToFile('[Backend] Running as Node.js script');
+      } else {
+        // Running as executable (production)
+        nodeExecutable = BACKEND_EXE_PATH;
+        backendArgs = []; // No arguments needed for pkg executable
+        backendCwd = path.dirname(BACKEND_EXE_PATH);
+        logToFile('[Backend] Running as executable');
+      }
+      
+      logToFile('[Backend] Node executable: ' + nodeExecutable);
+      logToFile('[Backend] Working directory: ' + backendCwd);
       
       // Set up environment variables for backend
       const backendEnv = {
@@ -246,54 +306,75 @@ function startBackendServer() {
         NODE_ENV: isDev ? 'development' : 'production',
       };
 
-      // In production, set paths so backend can find its dependencies
-      if (app.isPackaged) {
-        const appPath = app.getAppPath();
-        const backendNodeModulesPath = path.join(appPath, 'backend', 'node_modules');
-        const backendDatabasePath = path.join(appPath, 'backend', 'database', 'ems.db');
-        
-        // Set NODE_PATH to help backend find its modules
-        backendEnv.NODE_PATH = backendNodeModulesPath;
+      // In production, set DB_PATH for the backend executable
+      if (app.isPackaged && !isDev) {
+        const backendDatabasePath = path.join(process.resourcesPath, 'backend', 'database', 'ems.db');
         backendEnv.DB_PATH = backendDatabasePath;
         
-        // Also add to PATH for native modules (unpacked to app.asar.unpacked)
-        const unpackedPath = appPath.replace('app.asar', 'app.asar.unpacked');
-        const unpackedNodeModulesPath = path.join(unpackedPath, 'backend', 'node_modules');
-        const pathSeparator = process.platform === 'win32' ? ';' : ':';
-        backendEnv.PATH = `${unpackedNodeModulesPath}${pathSeparator}${process.env.PATH}`;
+        logToFile('[Backend] Resources path: ' + process.resourcesPath);
+        logToFile('[Backend] Database path: ' + backendDatabasePath);
+        
+        // Check if database directory exists
+        const dbDir = path.dirname(backendDatabasePath);
+        if (fs.existsSync(dbDir)) {
+          logToFile('[Backend] ✓ Database directory exists: ' + dbDir);
+        } else {
+          logToFile('[Backend] ✗ Database directory does NOT exist: ' + dbDir);
+        }
       }
 
-      backendProcess = spawn(nodeExecutable, [BACKEND_PATH], {
+      logToFile('[Backend] Spawning backend process...');
+      logToFile('[Backend] Command: ' + nodeExecutable + (backendArgs.length > 0 ? ' ' + backendArgs.join(' ') : ''));
+      
+      // Spawn backend process
+      // If it's an executable, run it directly; otherwise use Electron's Node.js
+      backendProcess = spawn(nodeExecutable, backendArgs, {
         cwd: backendCwd,
         env: backendEnv,
         stdio: ['ignore', 'pipe', 'pipe'],
       });
+      
+      // Check if process was created (pid will be undefined if spawn failed immediately)
+      if (backendProcess.pid) {
+        logToFile('[Backend] ✓ Process spawned successfully (PID: ' + backendProcess.pid + ')');
+      } else {
+        logToFile('[Backend] ⚠ Process spawned but PID is undefined (may be starting)');
+      }
 
       let serverReady = false;
 
       // Handle stdout
       backendProcess.stdout.on('data', (data) => {
         const output = data.toString();
-        console.log(`[Backend] ${output}`);
+        logToFile('[Backend] ' + output.trim());
         
         // Check if server is ready
         if (output.includes('Server running on port') && !serverReady) {
           serverReady = true;
+          logToFile('[Backend] ✓ Server is ready!');
           resolve();
         }
       });
 
       // Handle stderr
       backendProcess.stderr.on('data', (data) => {
-        console.error(`[Backend Error] ${data.toString()}`);
+        const error = data.toString();
+        logToFile('[Backend Error] ' + error.trim());
       });
 
       // Handle process exit
       backendProcess.on('exit', (code) => {
-        console.log(`Backend process exited with code ${code}`);
+        logToFile('[Backend] Process exited with code: ' + code);
         if (code !== 0 && code !== null) {
+          logToFile('[Backend] ✗ Backend server exited with error code: ' + code);
           reject(new Error(`Backend server exited with code ${code}`));
         }
+      });
+      
+      // Handle spawn errors
+      backendProcess.on('error', (error) => {
+        logToFile('[Backend] ✗ Failed to spawn backend process: ' + error.message);
+        reject(error);
       });
 
       // Timeout for server startup
@@ -327,16 +408,30 @@ function stopBackendServer() {
   }
 }
 
+// Handle second instance (focus existing window)
+app.on('second-instance', () => {
+  // Someone tried to run a second instance, focus our window instead
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
 // App event handlers
 app.whenReady().then(async () => {
-  console.log('[App] App is ready, starting...');
+  logToFile('========================================');
+  logToFile('[App] App is ready, starting...');
+  logToFile('[App] isDev: ' + isDev);
+  logToFile('[App] isPackaged: ' + app.isPackaged);
+  logToFile('[App] App path: ' + app.getAppPath());
+  logToFile('========================================');
   
   // Create window first so user can see something
   createWindow();
   
   try {
     // Start backend server (don't block window creation)
-    console.log('[App] Starting backend server...');
+    logToFile('[App] Starting backend server...');
     const backendPromise = startBackendServer();
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Backend startup timeout')), 10000)
@@ -344,9 +439,10 @@ app.whenReady().then(async () => {
     
     try {
       await Promise.race([backendPromise, timeoutPromise]);
-      console.log('[App] Backend server started successfully');
+      logToFile('[App] ✓ Backend server started successfully');
     } catch (error) {
-      console.error('[App] Backend startup error (continuing anyway):', error);
+      logToFile('[App] ✗ Backend startup error (continuing anyway): ' + error.message);
+      logToFile('[App] Error stack: ' + (error.stack || 'No stack trace'));
       // Continue even if backend fails - window should still show
     }
     

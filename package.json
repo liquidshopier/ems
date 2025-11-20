@@ -11,9 +11,10 @@
     "electron": "cross-env NODE_ENV=development electron .",
     "electron:dev": "concurrently \"npm run server\" \"npm run client\" \"wait-on http://localhost:5000/api/health http://localhost:3000 && cross-env NODE_ENV=development electron .\"",
     "build:frontend": "cd frontend && npm run build",
-    "build:electron": "npm run build:frontend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
-    "build:electron:win": "npm run build:frontend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --dir",
-    "build:electron:installer": "npm run build:frontend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
+    "build:backend": "cd backend && npm run build",
+    "build:electron": "npm run build:frontend && npm run build:backend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
+    "build:electron:win": "npm run build:frontend && npm run build:backend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --dir",
+    "build:electron:installer": "npm run build:frontend && npm run build:backend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
     "build:electron:mac": "npm run build:frontend && electron-builder --mac",
     "build:electron:linux": "npm run build:frontend && electron-builder --linux",
     "dist": "npm run build:electron"
@@ -33,23 +34,17 @@
     "files": [
       "electron/**/*",
       "frontend/build/**/*",
-      "backend/**/*",
-      "node_modules/**/*",
-      "!frontend/node_modules/**/*",
-      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
-      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
-      "!**/node_modules/*.d.ts",
-      "!**/node_modules/.bin",
-      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
-      "!.editorconfig",
-      "!**/._*",
-      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
-      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
-      "!**/{appveyor.yml,.travis.yml,circle.yml}",
-      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+      "package.json"
     ],
-    "asarUnpack": [
-      "backend/node_modules/sqlite3/**/*"
+    "extraResources": [
+      {
+        "from": "backend/backend.exe",
+        "to": "backend/backend.exe"
+      },
+      {
+        "from": "backend/database",
+        "to": "backend/database"
+      }
     ],
     "win": {
       "target": [
@@ -96,6 +91,7 @@
     "cross-env": "^10.1.0",
     "electron": "^39.2.3",
     "electron-builder": "^26.0.12",
+    "pkg": "^5.8.1",
     "wait-on": "^9.0.3"
   }
 }

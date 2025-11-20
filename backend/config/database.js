@@ -123,6 +123,9 @@ const initializeDatabase = async () => {
         
         const schema = fs.readFileSync(schemaPath, 'utf8');
         
+        console.log(`📄 Schema file path: ${schemaPath}`);
+        console.log(`📄 Schema file size: ${schema.length} characters`);
+        
         // Remove comments and split by semicolon
         const lines = schema.split('\n');
         let sqlScript = '';
@@ -136,27 +139,66 @@ const initializeDatabase = async () => {
             // Remove inline comments
             const commentIndex = trimmed.indexOf('--');
             if (commentIndex > 0) {
-                sqlScript += trimmed.substring(0, commentIndex) + '\n';
+                sqlScript += trimmed.substring(0, commentIndex) + ' ';
             } else {
-                sqlScript += trimmed + '\n';
+                sqlScript += trimmed + ' ';
             }
         }
         
-        // Split by semicolon and execute each statement
-        const statements = sqlScript
-            .split(';')
-            .map(s => s.trim())
-            .filter(s => s.length > 0);
+        // Better SQL parsing - handle multi-line statements and triggers
+        // Split by semicolon but keep track of BEGIN/END blocks
+        let statements = [];
+        let currentStatement = '';
+        let inBeginBlock = 0;
+        
+        const parts = sqlScript.split(';');
+        for (let part of parts) {
+            part = part.trim();
+            if (!part) continue;
+            
+            // Count BEGIN and END keywords
+            const beginMatches = (part.match(/\bBEGIN\b/gi) || []).length;
+            const endMatches = (part.match(/\bEND\b/gi) || []).length;
+            inBeginBlock += beginMatches - endMatches;
+            
+            currentStatement += (currentStatement ? ' ' : '') + part;
+            
+            // Only split on semicolon if we're not in a BEGIN block
+            if (inBeginBlock === 0) {
+                if (currentStatement.trim().length > 0) {
+                    statements.push(currentStatement.trim());
+                }
+                currentStatement = '';
+            } else {
+                currentStatement += ';';
+            }
+        }
+        
+        // Add any remaining statement
+        if (currentStatement.trim().length > 0) {
+            statements.push(currentStatement.trim());
+        }
         
         console.log(`⏳ Initializing database with ${statements.length} statements...`);
         
-        for (const statement of statements) {
+        for (let i = 0; i < statements.length; i++) {
+            const statement = statements[i];
+            // Skip very short statements (likely artifacts from parsing)
+            if (statement.length < 10) {
+                console.log(`⏭ Skipping short statement ${i + 1}: "${statement.substring(0, 50)}"`);
+                continue;
+            }
+            
             try {
+                console.log(`📝 Executing statement ${i + 1}/${statements.length}: ${statement.substring(0, 100)}...`);
                 await database.run(statement);
             } catch (err) {
                 // Ignore "table already exists" errors
-                if (!err.message.includes('already exists')) {
-                    console.warn(`Warning executing statement: ${err.message}`);
+                if (err.message.includes('already exists')) {
+                    console.log(`ℹ Statement ${i + 1} skipped (already exists)`);
+                } else {
+                    console.warn(`⚠ Warning executing statement ${i + 1}: ${err.message}`);
+                    console.warn(`   Statement: ${statement.substring(0, 200)}`);
                 }
             }
         }
