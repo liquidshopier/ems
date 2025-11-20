@@ -2,18 +2,104 @@
   "name": "local-ems",
   "version": "1.0.0",
   "description": "Enterprise Management System",
-  "main": "index.js",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd backend && npm run dev",
     "client": "cd frontend && npm start",
-    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "electron": "cross-env NODE_ENV=development electron .",
+    "electron:dev": "concurrently \"npm run server\" \"npm run client\" \"wait-on http://localhost:5000/api/health http://localhost:3000 && cross-env NODE_ENV=development electron .\"",
+    "build:frontend": "cd frontend && npm run build",
+    "build:electron": "npm run build:frontend && electron-builder",
+    "build:electron:win": "npm run build:frontend && electron-builder --win",
+    "build:electron:mac": "npm run build:frontend && electron-builder --mac",
+    "build:electron:linux": "npm run build:frontend && electron-builder --linux",
+    "dist": "npm run build:electron"
   },
-  "keywords": [],
+  "keywords": ["ems", "enterprise", "management", "system"],
   "author": "",
   "license": "ISC",
+  "build": {
+    "appId": "com.ems.app",
+    "productName": "EMS - Enterprise Management System",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "frontend/build/**/*",
+      "node_modules/**/*",
+      "!backend/**/*",
+      "!frontend/node_modules/**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*",
+          "!**/node_modules/.bin/**",
+          "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+          "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+          "!**/node_modules/*.d.ts"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.business"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Office"
+    },
+    "publish": null,
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
+    "electron": "^39.2.3",
+    "electron-builder": "^26.0.12",
+    "wait-on": "^9.0.3"
   }
 }
-

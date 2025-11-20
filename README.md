@@ -1,28 +1,71 @@
 # Enterprise Management System (EMS)
 
-A comprehensive enterprise management system built with React, Material-UI, Node.js, Express, and SQLite.
+A comprehensive enterprise management system built with React, Material-UI, Node.js, Express, and SQLite. Available as a web application or as a standalone Electron desktop application.
 
 ## Quick Start
 
-### 1. Start Backend
+### Web Application
+
+#### 1. Start Backend
 ```bash
 cd backend
 node server.js
 ```
 
-### 2. Start Frontend  
+#### 2. Start Frontend  
 ```bash
 cd frontend
 npm start
 ```
 
-### 3. Login
+#### 3. Login
 - **Admin:** `admin` / `123`
 - **Developer:** `dev` / `securitykis0428#` (hidden)
 
-### 4. Access
+#### 4. Access
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:5000
+
+### Electron Desktop Application
+
+#### Development Mode
+Run the app in Electron with hot-reload:
+```bash
+npm run electron:dev
+```
+This will start the backend server and launch the Electron app.
+
+#### Build Executable
+Build a standalone executable for your platform:
+
+**Windows:**
+```bash
+npm run build:electron:win
+```
+
+**macOS:**
+```bash
+npm run build:electron:mac
+```
+
+**Linux:**
+```bash
+npm run build:electron:linux
+```
+
+**All Platforms:**
+```bash
+npm run build:electron
+```
+
+The built executables will be in the `dist/` folder.
+
+#### Running Built App
+- **Windows:** Run the `.exe` installer from `dist/` folder
+- **macOS:** Open the `.dmg` file from `dist/` folder
+- **Linux:** Run the `.AppImage` file from `dist/` folder
+
+**Note:** The Electron app bundles both frontend and backend into a single executable. The backend server **automatically starts** when you launch the app - no separate server setup needed! The database is also included and persists between app sessions.
 
 ---
 
@@ -120,6 +163,10 @@ Users can have granular permissions:
 - Recharts for charts
 - Axios for API calls
 - React Router for navigation
+
+### Desktop Application
+- Electron (for desktop app packaging)
+- electron-builder (for creating installers)
 
 ---
 

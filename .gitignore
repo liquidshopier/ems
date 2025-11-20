@@ -9,6 +9,8 @@ node_modules/
 # Production
 /build
 /dist
+/electron/dist
+/electron/build
 
 # Misc
 .DS_Store
@@ -33,3 +35,4 @@ lerna-debug.log*
 
 # OS
 Thumbs.db
+*.db
