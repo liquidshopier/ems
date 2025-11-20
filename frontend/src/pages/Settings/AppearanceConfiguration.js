@@ -41,6 +41,9 @@ const DEFAULT_STYLES = {
   timezoneOffset: '9', // Default GMT+9
   currencySymbol: '$', // Default currency symbol
   currencyPosition: 'before', // Default: before (e.g., $100 or 100$)
+  currencySymbolColor: '#666666', // Default currency symbol color
+  currencySymbolWeight: 'bold', // Default currency symbol font weight
+  currencySymbolSize: '1em', // Default currency symbol size (relative to number)
 };
 
 const COMMON_FONTS = [
@@ -657,15 +660,100 @@ function AppearanceConfiguration() {
                   {getText('settings.appearanceConfig.currency.positionHelper', 'Choose where to display the currency symbol')}
                 </Typography>
               </FormControl>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Typography variant="subtitle2" gutterBottom fontWeight="bold">
+                {getText('settings.appearanceConfig.currency.styleTitle', 'Symbol Styling')}
+              </Typography>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+                {getText('settings.appearanceConfig.currency.styleSubtitle', 'Customize the appearance of the currency symbol')}
+              </Typography>
+
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Box>
+                    <Typography variant="subtitle2" gutterBottom>
+                      {getText('settings.appearanceConfig.currency.symbolColor', 'Symbol Color')}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <input
+                        type="color"
+                        value={styles.currencySymbolColor || '#666666'}
+                        onChange={(e) => handleStyleChange('currencySymbolColor', e.target.value)}
+                        style={{
+                          width: '60px',
+                          height: '40px',
+                          border: '2px solid #ddd',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                        }}
+                      />
+                      <TextField
+                        size="small"
+                        value={styles.currencySymbolColor || '#666666'}
+                        onChange={(e) => handleStyleChange('currencySymbolColor', e.target.value)}
+                        placeholder="#666666"
+                        sx={{ flex: 1 }}
+                      />
+                    </Box>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth>
+                    <InputLabel>{getText('settings.appearanceConfig.currency.symbolWeight', 'Font Weight')}</InputLabel>
+                    <Select
+                      value={styles.currencySymbolWeight || 'bold'}
+                      onChange={(e) => handleStyleChange('currencySymbolWeight', e.target.value)}
+                      label={getText('settings.appearanceConfig.currency.symbolWeight', 'Font Weight')}
+                    >
+                      <MenuItem value="normal">{getText('settings.appearanceConfig.currency.weightNormal', 'Normal')}</MenuItem>
+                      <MenuItem value="bold">{getText('settings.appearanceConfig.currency.weightBold', 'Bold')}</MenuItem>
+                      <MenuItem value="lighter">{getText('settings.appearanceConfig.currency.weightLighter', 'Lighter')}</MenuItem>
+                      <MenuItem value="bolder">{getText('settings.appearanceConfig.currency.weightBolder', 'Bolder')}</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label={getText('settings.appearanceConfig.currency.symbolSize', 'Symbol Size')}
+                    value={styles.currencySymbolSize || '1em'}
+                    onChange={(e) => handleStyleChange('currencySymbolSize', e.target.value)}
+                    placeholder="1em"
+                    helperText={getText('settings.appearanceConfig.currency.symbolSizeHelper', 'Size relative to number (e.g., 1em, 0.9em, 1.2em)')}
+                  />
+                </Grid>
+              </Grid>
               
               <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
                 <Typography variant="body2" color="textSecondary" gutterBottom>
                   {getText('settings.appearanceConfig.currency.preview', 'Preview')}:
                 </Typography>
-                <Typography variant="h6" fontWeight="bold">
-                  {styles.currencyPosition === 'after' 
-                    ? `1,234.56${styles.currencySymbol || '$'}`
-                    : `${styles.currencySymbol || '$'}1,234.56`}
+                <Typography 
+                  variant="h6" 
+                  fontWeight="bold"
+                  sx={{
+                    '& .currency-symbol': {
+                      color: styles.currencySymbolColor || '#666666',
+                      fontWeight: styles.currencySymbolWeight || 'bold',
+                      fontSize: styles.currencySymbolSize || '1em',
+                    }
+                  }}
+                >
+                  {styles.currencyPosition === 'after' ? (
+                    <>
+                      1,234.56{' '}
+                      <span className="currency-symbol">{styles.currencySymbol || '$'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="currency-symbol">{styles.currencySymbol || '$'}</span>
+                      {' '}1,234.56
+                    </>
+                  )}
                 </Typography>
               </Box>
             </Box>
