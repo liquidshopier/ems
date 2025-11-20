@@ -84,6 +84,7 @@ export const getAllowedSettingsTabs = (userPermissions) => {
       users: false,
       textConfig: false,
       appearance: false,
+      session: false,
     };
   }
   
@@ -92,6 +93,8 @@ export const getAllowedSettingsTabs = (userPermissions) => {
     users: hasPermission(userPermissions, 'settings.users'),
     textConfig: hasPermission(userPermissions, 'settings.textConfig'),
     appearance: hasPermission(userPermissions, 'settings.appearance'),
+    // Session management is available to users with settings.users permission (typically admins)
+    session: hasPermission(userPermissions, 'settings.users'),
   };
 };
 

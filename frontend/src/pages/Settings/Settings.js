@@ -25,6 +25,7 @@ import UnitModal from './UnitModal';
 import UserModal from './UserModal';
 import TextConfiguration from './TextConfiguration';
 import AppearanceConfiguration from './AppearanceConfiguration';
+import SessionSettings from './SessionSettings';
 
 function Settings() {
   const { user } = useAuth();
@@ -275,6 +276,7 @@ function Settings() {
         {allowedTabs.users && <Tab label={getText('settings.tabs.userManagement', 'User Management')} />}
         {allowedTabs.textConfig && <Tab label={getText('settings.tabs.textConfiguration', 'Text Configuration')} />}
         {allowedTabs.appearance && <Tab label={getText('settings.tabs.appearance', 'Appearance')} />}
+        {allowedTabs.session && <Tab label={getText('settings.tabs.session', 'Session Management')} />}
       </Tabs>
 
       {/* Dynamically render tabs based on permissions */}
@@ -319,6 +321,8 @@ function Settings() {
       {activeTab === ((allowedTabs.units ? 1 : 0) + (allowedTabs.users ? 1 : 0)) && allowedTabs.textConfig && <TextConfiguration />}
 
       {activeTab === ((allowedTabs.units ? 1 : 0) + (allowedTabs.users ? 1 : 0) + (allowedTabs.textConfig ? 1 : 0)) && allowedTabs.appearance && <AppearanceConfiguration />}
+
+      {activeTab === ((allowedTabs.units ? 1 : 0) + (allowedTabs.users ? 1 : 0) + (allowedTabs.textConfig ? 1 : 0) + (allowedTabs.appearance ? 1 : 0)) && allowedTabs.session && <SessionSettings />}
 
       <UnitModal
         open={unitModal.open}

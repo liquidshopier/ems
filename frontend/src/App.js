@@ -11,6 +11,7 @@ import Sales from './pages/Sales/Sales';
 import Customers from './pages/Customers/Customers';
 import Settings from './pages/Settings/Settings';
 import Logs from './pages/Logs/Logs';
+import { isSessionManagementEnabled, clearSession } from './utils/sessionManager';
 
 const theme = createTheme({
   palette: {
@@ -41,6 +42,29 @@ const theme = createTheme({
 function App() {
   useEffect(() => {
     loadConfigurations();
+    
+    // Handle app close - clear session if session management is enabled
+    const handleBeforeUnload = () => {
+      if (isSessionManagementEnabled()) {
+        clearSession();
+      }
+    };
+
+    // Handle page visibility change (tab switch, minimize, etc.)
+    const handleVisibilityChange = () => {
+      if (document.hidden && isSessionManagementEnabled()) {
+        // When tab becomes hidden, we could optionally clear session
+        // But for now, we'll only clear on actual close
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const loadConfigurations = () => {

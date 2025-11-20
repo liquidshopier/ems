@@ -123,14 +123,14 @@ function Login() {
             </Button>
           </Box>
 
-          <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1, width: '100%' }}>
+          {/* <Box sx={{ mt: 2, p: 2, backgroundColor: '#f5f5f5', borderRadius: 1, width: '100%' }}>
             <Typography variant="body2" color="textSecondary" align="center">
               <strong>Default Credentials:</strong>
             </Typography>
             <Typography variant="body2" color="textSecondary" align="center">
               Username: <strong>admin</strong> | Password: <strong>123</strong>
             </Typography>
-          </Box>
+          </Box> */}
         </Paper>
       </Box>
     </Container>
