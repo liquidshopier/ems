@@ -11,8 +11,9 @@
     "electron": "cross-env NODE_ENV=development electron .",
     "electron:dev": "concurrently \"npm run server\" \"npm run client\" \"wait-on http://localhost:5000/api/health http://localhost:3000 && cross-env NODE_ENV=development electron .\"",
     "build:frontend": "cd frontend && npm run build",
-    "build:electron": "npm run build:frontend && electron-builder",
-    "build:electron:win": "npm run build:frontend && electron-builder --win",
+    "build:electron": "npm run build:frontend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
+    "build:electron:win": "npm run build:frontend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --dir",
+    "build:electron:installer": "npm run build:frontend && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win",
     "build:electron:mac": "npm run build:frontend && electron-builder --mac",
     "build:electron:linux": "npm run build:frontend && electron-builder --linux",
     "dist": "npm run build:electron"
@@ -23,6 +24,8 @@
   "build": {
     "appId": "com.ems.app",
     "productName": "EMS - Enterprise Management System",
+    "extends": null,
+    "asar": true,
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -30,8 +33,8 @@
     "files": [
       "electron/**/*",
       "frontend/build/**/*",
+      "backend/**/*",
       "node_modules/**/*",
-      "!backend/**/*",
       "!frontend/node_modules/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
       "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
@@ -45,18 +48,8 @@
       "!**/{appveyor.yml,.travis.yml,circle.yml}",
       "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
     ],
-    "extraResources": [
-      {
-        "from": "backend",
-        "to": "backend",
-        "filter": [
-          "**/*",
-          "!**/node_modules/.bin/**",
-          "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
-          "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
-          "!**/node_modules/*.d.ts"
-        ]
-      }
+    "asarUnpack": [
+      "backend/node_modules/sqlite3/**/*"
     ],
     "win": {
       "target": [
@@ -65,7 +58,10 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "icon.ico",
+      "signAndEditExecutable": false,
+      "verifyUpdateCodeSignature": false,
+      "forceCodeSigning": false
     },
     "mac": {
       "target": [

@@ -9,11 +9,11 @@ const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 // Backend server configuration
 const BACKEND_PORT = process.env.PORT || 5000;
-// In production, backend is bundled in the app.asar or resources
+// In production, backend is bundled in the app.asar (protected) with native modules unpacked
 const BACKEND_PATH = isDev 
   ? path.join(__dirname, '..', 'backend', 'server.js')
   : (app.isPackaged 
-      ? path.join(process.resourcesPath, 'backend', 'server.js')
+      ? path.join(app.getAppPath(), 'backend', 'server.js')
       : path.join(__dirname, '..', 'backend', 'server.js'));
 
 // Frontend build path
@@ -138,7 +138,7 @@ function startBackendServer() {
       const backendCwd = isDev 
         ? path.join(__dirname, '..', 'backend')
         : (app.isPackaged 
-            ? process.resourcesPath 
+            ? app.getAppPath()
             : path.dirname(BACKEND_PATH));
       
       // Set up environment variables for backend
@@ -150,16 +150,19 @@ function startBackendServer() {
 
       // In production, set paths so backend can find its dependencies
       if (app.isPackaged) {
-        const backendNodeModulesPath = path.join(process.resourcesPath, 'backend', 'node_modules');
-        const backendDatabasePath = path.join(process.resourcesPath, 'backend', 'database', 'ems.db');
+        const appPath = app.getAppPath();
+        const backendNodeModulesPath = path.join(appPath, 'backend', 'node_modules');
+        const backendDatabasePath = path.join(appPath, 'backend', 'database', 'ems.db');
         
         // Set NODE_PATH to help backend find its modules
         backendEnv.NODE_PATH = backendNodeModulesPath;
         backendEnv.DB_PATH = backendDatabasePath;
         
-        // Also add to PATH for native modules
+        // Also add to PATH for native modules (unpacked to app.asar.unpacked)
+        const unpackedPath = appPath.replace('app.asar', 'app.asar.unpacked');
+        const unpackedNodeModulesPath = path.join(unpackedPath, 'backend', 'node_modules');
         const pathSeparator = process.platform === 'win32' ? ';' : ':';
-        backendEnv.PATH = `${backendNodeModulesPath}${pathSeparator}${process.env.PATH}`;
+        backendEnv.PATH = `${unpackedNodeModulesPath}${pathSeparator}${process.env.PATH}`;
       }
 
       backendProcess = spawn(nodeExecutable, [BACKEND_PATH], {
