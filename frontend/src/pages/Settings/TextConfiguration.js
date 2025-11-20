@@ -205,7 +205,7 @@ function TextConfiguration() {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#000000' }} />
       </Box>
     );
   }

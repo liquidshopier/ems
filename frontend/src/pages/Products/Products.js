@@ -120,6 +120,13 @@ function Products() {
       align: 'right',
       renderCell: (row) => `${parseFloat(row.qty).toFixed(2)} ${row.unit_value}`
     },
+    { field: 'unit_value', headerName: getText('products.table.unit', 'Unit'), minWidth: 100 },
+    { 
+      field: 'description', 
+      headerName: getText('products.table.description', 'Description'), 
+      minWidth: 200,
+      renderCell: (row) => row.description || '-'
+    },
     { 
       field: 'original_price', 
       headerName: getText('products.table.originalPrice', 'Original Price'), 
@@ -134,7 +141,6 @@ function Products() {
       align: 'right',
       renderCell: (row) => formatCurrency(row.sale_price)
     },
-    { field: 'unit_value', headerName: getText('products.table.unit', 'Unit'), minWidth: 100 },
     { 
       field: 'created_at', 
       headerName: getText('products.table.createdAt', 'Created At'), 
@@ -158,6 +164,7 @@ function Products() {
       align: 'right',
       renderCell: (row) => `${parseFloat(row.qty).toFixed(2)} ${row.unit_value || ''}`
     },
+    { field: 'unit_value', headerName: getText('products.purchaseHistory.table.unit', 'Unit'), minWidth: 100 },
     { 
       field: 'price', 
       headerName: getText('products.purchaseHistory.table.price', 'Unit Price'), 

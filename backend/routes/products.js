@@ -24,6 +24,7 @@ router.get('/', async (req, res) => {
             SELECT 
                 p.id, 
                 p.name, 
+                p.description,
                 p.qty, 
                 p.original_price, 
                 p.sale_price, 
@@ -77,7 +78,7 @@ router.post('/', validateProduct, async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        const { name, qty, original_price, sale_price, unit_id } = req.body;
+        const { name, description, qty, original_price, sale_price, unit_id } = req.body;
 
         // Check if product name already exists
         const [existing] = await connection.query(
@@ -95,8 +96,8 @@ router.post('/', validateProduct, async (req, res) => {
 
         // Insert product
         const [result] = await connection.query(
-            'INSERT INTO products (name, qty, original_price, sale_price, unit_id) VALUES (?, ?, ?, ?, ?)',
-            [name, qty, original_price, sale_price, unit_id]
+            'INSERT INTO products (name, description, qty, original_price, sale_price, unit_id) VALUES (?, ?, ?, ?, ?, ?)',
+            [name, description || null, qty, original_price, sale_price, unit_id]
         );
 
         const productId = result.insertId;
@@ -144,7 +145,7 @@ router.post('/', validateProduct, async (req, res) => {
     } catch (error) {
         await connection.rollback();
         console.error('Error creating product:', error);
-        await logProduct(req.user, 'CREATE', null, null, { name, qty, original_price, sale_price, unit_id }, 'failed', error.message, req.ip);
+        await logProduct(req.user, 'CREATE', null, null, { name, description, qty, original_price, sale_price, unit_id }, 'failed', error.message, req.ip);
         res.status(500).json({ success: false, error: error.message });
     } finally {
         connection.release();
@@ -157,7 +158,7 @@ router.put('/:id', async (req, res) => {
     try {
         await connection.beginTransaction();
 
-        const { name, original_price, sale_price, unit_id } = req.body;
+        const { name, description, original_price, sale_price, unit_id } = req.body;
         const productId = req.params.id;
 
         // Check if product exists and get old data
@@ -191,8 +192,8 @@ router.put('/:id', async (req, res) => {
 
         // Update product (excluding qty)
         await connection.query(
-            'UPDATE products SET name = ?, original_price = ?, sale_price = ?, unit_id = ? WHERE id = ?',
-            [name, original_price, sale_price, unit_id, productId]
+            'UPDATE products SET name = ?, description = ?, original_price = ?, sale_price = ?, unit_id = ? WHERE id = ?',
+            [name, description || null, original_price, sale_price, unit_id, productId]
         );
 
         await connection.commit();
@@ -218,7 +219,7 @@ router.put('/:id', async (req, res) => {
     } catch (error) {
         await connection.rollback();
         console.error('Error updating product:', error);
-        await logProduct(req.user, 'UPDATE', productId, null, { name, original_price, sale_price, unit_id }, 'failed', error.message, req.ip);
+        await logProduct(req.user, 'UPDATE', productId, null, { name, description, original_price, sale_price, unit_id }, 'failed', error.message, req.ip);
         res.status(500).json({ success: false, error: error.message });
     } finally {
         connection.release();

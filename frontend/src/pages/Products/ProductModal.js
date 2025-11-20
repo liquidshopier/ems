@@ -15,6 +15,7 @@ import { getText } from '../../utils/textConfig';
 function ProductModal({ open, mode, data, onClose, onSuccess, onError }) {
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
     qty: '',
     original_price: '',
     sale_price: '',
@@ -29,6 +30,7 @@ function ProductModal({ open, mode, data, onClose, onSuccess, onError }) {
       if (mode === 'edit' && data) {
         setFormData({
           name: data.name,
+          description: data.description || '',
           qty: data.qty,
           original_price: data.original_price,
           sale_price: data.sale_price,
@@ -37,6 +39,7 @@ function ProductModal({ open, mode, data, onClose, onSuccess, onError }) {
       } else {
         setFormData({
           name: '',
+          description: '',
           qty: '',
           original_price: '',
           sale_price: '',
@@ -81,6 +84,8 @@ function ProductModal({ open, mode, data, onClose, onSuccess, onError }) {
       } else {
         // For edit mode, don't send qty
         const { qty, ...updateData } = formData;
+        // Ensure description is included even if empty
+        updateData.description = formData.description || '';
         await productsAPI.update(data.id, updateData);
         onSuccess(getText('products.messages.editSuccess', 'Product updated successfully'));
       }
@@ -106,6 +111,18 @@ function ProductModal({ open, mode, data, onClose, onSuccess, onError }) {
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
               required
+            />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <TextField
+              fullWidth
+              label={getText('products.modal.description', 'Description')}
+              value={formData.description}
+              onChange={(e) => handleChange('description', e.target.value)}
+              multiline
+              rows={2}
+              helperText={getText('products.modal.descriptionHelper', 'Optional - Add product description')}
             />
           </Grid>
           

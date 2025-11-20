@@ -143,7 +143,8 @@ function Dashboard() {
 
   const lowStockColumns = [
     { field: 'name', headerName: getText('dashboard.tables.productName', 'Product Name'), minWidth: 200 },
-    { field: 'qty', headerName: getText('dashboard.tables.quantity', 'Quantity'), minWidth: 100, align: 'right', renderCell: (row) => `${parseFloat(row.qty).toFixed(2)} ${row.unit_value}` },
+    { field: 'qty', headerName: getText('dashboard.tables.quantity', 'Quantity'), minWidth: 100, align: 'right', renderCell: (row) => parseFloat(row.qty).toFixed(2) },
+    { field: 'unit_value', headerName: getText('dashboard.tables.unit', 'Unit'), minWidth: 100 },
     { field: 'sale_price', headerName: getText('dashboard.tables.price', 'Price'), minWidth: 100, align: 'right', renderCell: (row) => formatCurrency(row.sale_price) },
   ];
 

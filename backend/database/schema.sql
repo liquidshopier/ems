@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS units (
 CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
+    description TEXT,
     qty REAL NOT NULL DEFAULT 0,
     original_price REAL NOT NULL,
     sale_price REAL NOT NULL,
