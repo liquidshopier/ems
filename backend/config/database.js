@@ -249,4 +249,4 @@ const initializeDatabase = async () => {
     }
 };
 
-module.exports = { database, testConnection, initializeDatabase, db };
+module.exports = { database, testConnection, initializeDatabase, db, allAsync, getAsync, runAsync };

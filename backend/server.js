@@ -18,6 +18,8 @@ const dashboardRouter = require('./routes/dashboard');
 const purchaseHistoryRouter = require('./routes/purchaseHistory');
 const logsRouter = require('./routes/logs');
 const configRouter = require('./routes/config');
+const licenseRouter = require('./routes/license');
+const databaseViewRouter = require('./routes/databaseView');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -49,6 +51,8 @@ app.use('/api/dashboard', dashboardRouter);
 app.use('/api/purchase-history', purchaseHistoryRouter);
 app.use('/api/logs', logsRouter);
 app.use('/api/config', configRouter);
+app.use('/api/license', licenseRouter);
+app.use('/api/database-view', databaseViewRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

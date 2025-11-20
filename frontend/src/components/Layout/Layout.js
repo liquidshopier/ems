@@ -30,6 +30,7 @@ import {
   ChevronRight as ChevronRightIcon,
   AdminPanelSettings as AdminIcon,
   History as HistoryIcon,
+  Storage as DatabaseIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { getText } from '../../utils/textConfig';
@@ -46,6 +47,8 @@ const getMenuItems = (user) => [
   { text: getText('nav.settings', 'Settings'), icon: <SettingsIcon />, path: '/settings', permission: 'settings' },
   // Log History is admin/dev only
   ...((user?.username === 'admin' || user?.username === 'dev') ? [{ text: getText('nav.logs', 'Log History'), icon: <HistoryIcon />, path: '/logs', permission: 'logs' }] : []),
+  // Database View is dev only
+  ...(user?.username === 'dev' ? [{ text: getText('nav.databaseView', 'Database View'), icon: <DatabaseIcon />, path: '/database-view', permission: 'databaseView' }] : []),
 ];
 
 function Layout() {
@@ -92,6 +95,10 @@ function Layout() {
     if (item.permission === 'logs') {
       return true; // Already filtered above
     }
+    // Database View is already filtered in getMenuItems (dev only)
+    if (item.permission === 'databaseView') {
+      return true; // Already filtered above
+    }
     if (item.permission === 'settings') {
       // Show settings if user has any settings permission
       return user?.permissions?.some(p => p.startsWith('settings'));
@@ -103,6 +110,15 @@ function Layout() {
   React.useEffect(() => {
     if (user && location.pathname !== '/login') {
       const path = location.pathname.substring(1); // Remove leading slash
+      
+      // Special case for database-view (dev only)
+      if (path === 'database-view') {
+        if (user.username !== 'dev') {
+          navigate('/products');
+        }
+        return; // Allow dev user to access
+      }
+      
       if (!canAccessRoute(user.permissions, path)) {
         navigate('/products'); // Redirect to products (default accessible page)
       }

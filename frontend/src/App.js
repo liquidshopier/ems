@@ -3,14 +3,17 @@ import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+import LicenseRoute from './components/Auth/LicenseRoute';
 import Layout from './components/Layout/Layout';
 import Login from './pages/Login/Login';
+import License from './pages/License/License';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Products from './pages/Products/Products';
 import Sales from './pages/Sales/Sales';
 import Customers from './pages/Customers/Customers';
 import Settings from './pages/Settings/Settings';
 import Logs from './pages/Logs/Logs';
+import DatabaseView from './pages/DatabaseView/DatabaseView';
 import { isSessionManagementEnabled, clearSession } from './utils/sessionManager';
 
 const theme = createTheme({
@@ -96,25 +99,29 @@ function App() {
       <CssBaseline />
       <AuthProvider>
         <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="products" element={<Products />} />
-              <Route path="sales" element={<Sales />} />
-              <Route path="customers" element={<Customers />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="logs" element={<Logs />} />
-            </Route>
-          </Routes>
+          <LicenseRoute>
+            <Routes>
+              <Route path="/license" element={<License />} />
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="products" element={<Products />} />
+                <Route path="sales" element={<Sales />} />
+                <Route path="customers" element={<Customers />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="logs" element={<Logs />} />
+                <Route path="database-view" element={<DatabaseView />} />
+              </Route>
+            </Routes>
+          </LicenseRoute>
         </Router>
       </AuthProvider>
     </ThemeProvider>

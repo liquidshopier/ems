@@ -107,5 +107,19 @@ export const dashboardAPI = {
   getLowStock: (params) => api.get('/dashboard/low-stock', { params }),
 };
 
+// License API (no auth required)
+export const licenseAPI = {
+  getDeviceNumber: () => api.get('/license/device-number'),
+  validate: (deviceNumber, licenseKey) => api.post('/license/validate', { deviceNumber, licenseKey }),
+  check: () => api.get('/license/check'),
+};
+
+// Database View API (dev only)
+export const databaseViewAPI = {
+  getAllTables: () => api.get('/database-view/all'),
+  getTables: () => api.get('/database-view/tables'),
+  getTable: (tableName, params) => api.get(`/database-view/table/${tableName}`, { params }),
+};
+
 export default api;
 
