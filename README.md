@@ -38,22 +38,18 @@ This will start the backend server and launch the Electron app.
 #### Build Executable
 Build a standalone executable for your platform:
 
-**Windows:**
+**Windows Installer:**
+```bash
+npm run build:electron:installer
+```
+This creates a Windows installer (`.exe`) in the `dist/` folder.
+
+**Windows (Directory Only):**
 ```bash
 npm run build:electron:win
 ```
 
-**macOS:**
-```bash
-npm run build:electron:mac
-```
-
-**Linux:**
-```bash
-npm run build:electron:linux
-```
-
-**All Platforms:**
+**All Platforms (Directory Only):**
 ```bash
 npm run build:electron
 ```
@@ -61,9 +57,8 @@ npm run build:electron
 The built executables will be in the `dist/` folder.
 
 #### Running Built App
-- **Windows:** Run the `.exe` installer from `dist/` folder
-- **macOS:** Open the `.dmg` file from `dist/` folder
-- **Linux:** Run the `.AppImage` file from `dist/` folder
+- **Windows:** Run the `.exe` installer from `dist/` folder to install the application
+- The installer will create shortcuts on desktop and start menu
 
 **Note:** The Electron app bundles both frontend and backend into a single executable. The backend server **automatically starts** when you launch the app - no separate server setup needed! The database is also included and persists between app sessions.
 
@@ -80,9 +75,10 @@ The built executables will be in the `dist/` folder.
 
 ### Products Management
 - Add, edit, delete products
+- Product descriptions
 - Track inventory
 - Add quantity with purchase history
-- Unit management
+- Unit management (unit column positioned next to quantity)
 
 ### Sales Management
 - Multi-product sales
@@ -100,11 +96,18 @@ The built executables will be in the `dist/` folder.
 - **User Management:** User CRUD with permissions
 - **Text Configuration:** Customize all UI texts
 - **Appearance:** Customize fonts and colors
+- **Session Management:** Enable/disable session timeout (24 hours), auto-logout on app close
 
 ### Log History
 - Tracks all database operations
 - Shows user, action, timestamp
 - View old/new data for changes
+
+### Database View (Dev Only)
+- View all database tables and their structure
+- Inspect table data with pagination
+- Detailed row view with modal
+- Accessible only to 'dev' user
 
 ---
 
@@ -117,10 +120,11 @@ Users can have granular permissions:
 - `sales` - Manage sales
 - `customers` - Manage customers
 - `settings.units` - Manage units
-- `settings.users` - Manage users
+- `settings.users` - Manage users (includes session management)
 - `settings.textConfig` - Configure texts
 - `settings.appearance` - Configure appearance
 - `logs` - View log history
+- `databaseView` - View database structure and data (dev user only)
 
 ### Protected Users
 - **Admin:** Cannot delete, only admin can change password
@@ -138,7 +142,24 @@ Users can have granular permissions:
 - **Storage:** Browser localStorage
 - **Scope:** Per browser/device
 - **Includes:** All UI texts (buttons, labels, messages, etc.)
-- **Sections:** App Info, Navigation, Dashboard, Products, Sales, Customers, Settings, Auth, Common
+- **Sections:** App Info, Navigation, Dashboard, Products, Sales, Customers, Settings, Auth, Common, Database View, License
+
+### Session Management
+- **Location:** Settings → Session Management
+- **Features:**
+  - Enable/disable session timeout
+  - 24-hour automatic session expiration
+  - Auto-logout when app is closed
+  - Session status display
+- **Storage:** Browser localStorage
+- **Access:** Admin users only
+
+### License System
+- **License Validation:** Required on first launch
+- **Device Number:** Auto-generated unique device identifier
+- **License Storage:** System directory (`C:/EMS-license.txt` on Windows, `~/EMS-license.txt` on macOS/Linux)
+- **Auto-validation:** Checks license on app startup
+- **Bypass:** Valid license automatically redirects to login
 
 ### Appearance Configuration
 - **Location:** Settings → Appearance  
@@ -178,16 +199,16 @@ Users can have granular permissions:
 │   ├── database/        # SQLite DB and schema
 │   ├── middleware/      # Auth middleware
 │   ├── routes/          # API routes
-│   ├── utils/           # Logger
+│   ├── utils/           # Logger, license generator, device info, license storage
 │   └── server.js
 ├── frontend/
 │   ├── src/
-│   │   ├── components/  # Reusable components
+│   │   ├── components/  # Reusable components (Auth, Layout, Common)
 │   │   ├── config/      # Text config
 │   │   ├── context/     # Auth context
-│   │   ├── pages/       # Page components
+│   │   ├── pages/       # Page components (Dashboard, Products, Sales, Customers, Settings, Logs, License, DatabaseView)
 │   │   ├── services/    # API services
-│   │   └── utils/       # Utilities
+│   │   └── utils/       # Utilities (textConfig, permissions, sessionManager)
 │   └── public/
 └── README.md
 ```
@@ -261,6 +282,16 @@ Users can have granular permissions:
 
 ### Dashboard
 - `GET /api/dashboard/stats` - Get statistics
+
+### License
+- `GET /api/license/device-number` - Get device number
+- `POST /api/license/validate` - Validate license key
+- `GET /api/license/check` - Check stored license
+
+### Database View (Dev Only)
+- `GET /api/database-view/all` - Get all tables with schema and preview data
+- `GET /api/database-view/tables` - Get list of all tables
+- `GET /api/database-view/table/:tableName` - Get table data with pagination
 
 ---
 
